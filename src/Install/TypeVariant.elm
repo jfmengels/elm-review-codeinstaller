@@ -1,10 +1,14 @@
-module Install.TypeVariant exposing (makeRule)
+module Install.TypeVariant exposing (config, Config)
 
 {-| Add a variant to a given type in a given module. As in
 the `ReviewConfig` item below, you specify the module name, the type
 name, and the type of the new variant.
 
-    Install.TypeVariant.makeRule "Types" "ToBackend" [ "ResetCounter" "SetCounter Int" ]
+    Install.TypeVariant.config
+        "Types"
+        "ToBackend"
+        [ "ResetCounter" "SetCounter Int" ]
+        |> Install.addTypeVariant
 
 Then you will have
 
@@ -16,7 +20,7 @@ Then you will have
 
 where the last two variants are the ones added.
 
-@docs makeRule
+@docs config, Config
 
 -}
 
@@ -24,6 +28,7 @@ import Elm.Syntax.Declaration as Declaration exposing (Declaration)
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node)
 import Elm.Syntax.Range exposing (Range)
+import Install.Internal.TypeVariant as Internal
 import Install.Library
 import Review.Fix as Fix exposing (Fix)
 import Review.Rule as Rule exposing (Error, Rule)
@@ -31,22 +36,28 @@ import Set exposing (Set)
 import Set.Extra
 
 
+{-| Configuration for rule.
+-}
+type alias Config =
+    Internal.Config
+
+
 {-| Create a rule that adds variants to a type in a specified module:
 
-    Install.TypeVariant.makeRule "Types" "ToBackend" [ "ResetCounter", "SetCounter: Int" ]
+    Install.TypeVariant.config
+        "Types"
+        "ToBackend"
+        [ "ResetCounter", "SetCounter: Int" ]
+        |> Install.addTypeVariant
 
 -}
-makeRule : String -> String -> List String -> Rule
-makeRule moduleName typeName_ variantList =
-    let
-        visitor : Node Declaration -> Context -> ( List (Error {}), Context )
-        visitor =
-            declarationVisitor moduleName typeName_ variantList
-    in
-    Rule.newModuleRuleSchemaUsingContextCreator "Install.TypeVariant" contextCreator
-        |> Rule.withDeclarationEnterVisitor visitor
-        |> Rule.providesFixesForModuleRule
-        |> Rule.fromModuleRuleSchema
+config : String -> String -> List String -> Config
+config hostModuleName typeName variants =
+    Internal.Config
+        { hostModuleName = String.split "." hostModuleName
+        , typeName = typeName
+        , variants = variants
+        }
 
 
 type alias Context =
